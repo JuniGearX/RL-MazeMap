@@ -149,10 +149,9 @@ def generate_vehicles(grid):
     return vehicles
 
 # Define the state space
-num_states = 10  # Assuming 10 possible states based on the given code
-
+num_states = 10  # Assuming 10 possible states
 # Define the action space
-num_actions = 6  # 6 possible actions based on the given code
+num_actions = 6  # 6 possible actions based
 
 # Initialize the Q-table with zeros
 q_table = np.zeros((num_states, num_actions))
@@ -175,7 +174,7 @@ def run_traffic_simulation(TrafficGridworldEnv, q_table):
         total_reward = 0
         success_count = 0
 
-        TrafficGridworldEnv.reset(self)
+        TrafficGridworldEnv.reset()
         done = False
 
         while not done:
