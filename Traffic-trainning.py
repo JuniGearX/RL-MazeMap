@@ -1,6 +1,10 @@
+import cv2
 import numpy as np
 import random
+import pickle
+import time
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 class TrafficGridworldEnv:
 
@@ -149,9 +153,20 @@ def generate_vehicles(grid):
     return vehicles
 
 # Define the state space
-num_states = 10  # Assuming 10 possible states
+num_states = 2500  # Assuming 10 possible states based on the given code
+
 # Define the action space
-num_actions = 6  # 6 possible actions based
+num_actions = 6  # 6 possible actions based on the given code
+
+# Set the parameters for the environment
+width = 20
+height = 20
+num_cars = 6
+num_steps = 100
+
+# Instantiate the TrafficGridworldEnv object
+env = TrafficGridworldEnv(width, height, num_cars, num_steps)
+
 
 # Initialize the Q-table with zeros
 q_table = np.zeros((num_states, num_actions))
@@ -165,7 +180,7 @@ rewards = {
     40: 400   # Highway: 400
 }
 
-def run_traffic_simulation(TrafficGridworldEnv, q_table):
+def run_traffic_simulation(env, q_table):
     rewards = []
     success_rates = []
     num_episodes = 1000  # Number of simulation episodes
@@ -174,42 +189,117 @@ def run_traffic_simulation(TrafficGridworldEnv, q_table):
         total_reward = 0
         success_count = 0
 
-        TrafficGridworldEnv.reset()
+        env.reset()
         done = False
 
         while not done:
-            state = get_state(TrafficGridworldEnv)
+            state = get_state(env)
             action = np.argmax(q_table[state])
-            reward, done = TrafficGridworldEnv.step(action)
+            reward, done = env.step(action)
             total_reward += reward
 
             if reward > 0:
                 success_count += 1
 
         rewards.append(total_reward)
-        success_rates.append(success_count / TrafficGridworldEnv.num_cars)
+        success_rates.append(success_count / env.num_cars)
 
     return rewards, success_rates
 
-def get_state(TrafficGridworldEnv):
+def get_state(env):
     state = 0
-    if TrafficGridworldEnv.current_state in TrafficGridworldEnv.intersection:
+    if env.current_state in env.intersection:
         state += 1
-    if TrafficGridworldEnv.current_state in TrafficGridworldEnv.roundabout:
+    if env.current_state in env.roundabout:
         state += 2
-    if TrafficGridworldEnv.current_state in TrafficGridworldEnv.two_plus_one_road:
+    if env.current_state in env.two_plus_one_road:
         state += 3
-    if TrafficGridworldEnv.current_state in TrafficGridworldEnv.highway:
+    if env.current_state in env.highway:
         state += 4
-    state += TrafficGridworldEnv.current_car * 10
+    state += env.current_car * 10
     return state
 
-# Assuming you have instantiated the TrafficGridworldTrafficGridworldEnv as 'TrafficGridworldEnv' and trained the Q-table as 'q_table'
+##breakk
+
+def render_animation(env, q_table):
+    # Set up the animation window
+    width = 21
+    height = 21
+    pixel_size = 20
+    window_width = width * pixel_size
+    window_height = height * pixel_size
+
+    # Define the colors for different elements
+    colors = {
+        "background": (255, 255, 255),
+        "car": (0, 0, 0),
+        "intersection": (255, 0, 0),
+        "roundabout": (0, 255, 0),
+        "two_plus_one_road": (0, 0, 255),
+        "highway": (255, 255, 0),
+    }
+
+    # Define the image for a single car
+    car_image = np.zeros((pixel_size, pixel_size, 3), np.uint8)
+    car_image[:, :] = colors["car"]
+
+    for episode in range(1, 11):  # Render 10 episodes
+        # Reset the environment
+        env.reset()
+        done = False
+
+        # Create the animation window
+        window = np.ones((window_height, window_width, 3), np.uint8) * colors["background"]
+
+        # Animate the episode
+        while not done:
+            state = get_state(env)
+            action = np.argmax(q_table[state])
+            reward, done = env.step(action)
+
+            # Clear the car's previous position
+            current_state_x, current_state_y = env.current_state
+            cv2.rectangle(
+                window,
+                (current_state_x * pixel_size, current_state_y * pixel_size),
+                ((current_state_x + 1) * pixel_size, (current_state_y + 1) * pixel_size),
+                colors["background"],
+                -1,
+            )
+
+            # Move the car to the new position
+            env.render()
+            car_x, car_y = env.current_state
+            window[
+                car_y * pixel_size : (car_y + 1) * pixel_size,
+                car_x * pixel_size : (car_x + 1) * pixel_size,
+            ] = car_image
+
+            # Display the updated window
+            cv2.imshow("Traffic Simulation", window)
+            cv2.waitKey(500)  # Pause for a short duration
+
+        # Reset the car's position for the next episode
+        cv2.rectangle(
+            window,
+            (car_x * pixel_size, car_y * pixel_size),
+            ((car_x + 1) * pixel_size, (car_y + 1) * pixel_size),
+            colors["background"],
+            -1,
+        )
+
+        cv2.destroyAllWindows()
+
+
+# Assuming you have instantiated the TrafficGridworldEnv as 'env' and trained the Q-table as 'q_table'
 
 # Run the traffic simulation and get the rewards and success rates
-rewards, success_rates = run_traffic_simulation(TrafficGridworldEnv, q_table)
+rewards, success_rates = run_traffic_simulation(env, q_table)
 
-# Plot the reward accumulation
+# Animate the traffic simulation
+render_animation(env, q_table)
+
+# Plot the rewards
 plt.plot(rewards)
 plt.xlabel('Episode')
 plt.ylabel('Total Reward')
@@ -222,3 +312,7 @@ plt.xlabel('Episode')
 plt.ylabel('Success Rate')
 plt.title('Success Rate')
 plt.show()
+
+# Save the Q-table
+with open(f"qtable-traffic-{int(time.time())}.pickle", "wb") as f:
+    pickle.dump(q_table, f)
