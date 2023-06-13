@@ -56,20 +56,21 @@ class TrafficGridworldEnv:
         # Check for collisions.
         for i in range(self.num_cars):
             if i != self.current_car and self.current_state == self.cars[i]:
-                return -1, None
+                return -1, True
 
         # Check for goal state.
         if self.current_state in self.intersection:
-            return 10, None
+            return 10, True
         elif self.current_state in self.roundabout:
-            return 20, None
+            return 20, True
         elif self.current_state in self.two_plus_one_road:
-            return 30, None
+            return 30, True
         elif self.current_state in self.highway:
-            return 40, None
+            return 40, True
 
         # Otherwise, return a reward of 0.
-        return 0, None
+        return 0, False
+
 
     def reset(self):
         self.grid = np.zeros((self.width, self.height))
@@ -274,9 +275,10 @@ def render_animation(env, q_table):
                 car_y * pixel_size : (car_y + 1) * pixel_size,
                 car_x * pixel_size : (car_x + 1) * pixel_size,
             ] = car_image
-
+    
             # Display the updated window
-            cv2.imshow("Traffic Simulation", window)
+            window_show = window.astype(np.uint8)  # Convert the array to uint8 data type
+            cv2.imshow("Traffic Simulation", window_show)
             cv2.waitKey(500)  # Pause for a short duration
 
         # Reset the car's position for the next episode
